@@ -1,1 +1,48 @@
+name: 🤖 Bot de Precios - Craft World
 
+on:
+  # ── Ejecutar automáticamente cada hora ──────────────────────────────────────
+  schedule:
+    - cron: '0 * * * *'   # cada hora en punto (UTC)
+                           # Para cada 6 horas: '0 */6 * * *'
+                           # Para cada 30 min:  '*/30 * * * *'
+
+  # ── También permite ejecutarlo manualmente desde GitHub ─────────────────────
+  workflow_dispatch:
+    inputs:
+      motivo:
+        description: 'Motivo de la ejecución manual'
+        required: false
+        default: 'Actualización manual'
+
+jobs:
+  fetch-prices:
+    name: Consultar pools y guardar precios
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Descargar el código del repositorio
+      - name: 📥 Checkout repositorio
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Configurar Node.js
+      - name: ⚙ Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. Ejecutar el bot
+      - name: 🤖 Ejecutar bot de precios
+        run: node fetch.js
+
+      # 4. Guardar los cambios en el repositorio
+      - name: 💾 Guardar prices.json
+        run: |
+          git config user.name  "CraftWorld Price Bot"
+          git config user.email "bot@craftworld-tracker"
+          git add prices.json
+          # Solo hacer commit si hubo cambios
+          git diff --staged --quiet || git commit -m "📊 Precios actualizados — $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
