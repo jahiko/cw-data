@@ -15,6 +15,9 @@ on:
         required: false
         default: 'Actualización manual'
 
+
+permissions:
+  contents: write
 jobs:
   fetch-prices:
     name: Consultar pools y guardar precios
