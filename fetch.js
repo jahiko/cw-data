@@ -56,8 +56,11 @@ function httpGet(url){
       let data='';
       res.on('data',chunk=>data+=chunk);
       res.on('end',()=>{
-        if(res.statusCode===429) return reject(new Error('Rate limit (429)'));
-        if(res.statusCode===404) return reject(new Error('Pool no encontrada (404)'));
+        if(res.statusCode===429){
+        const ra = res.headers && res.headers['retry-after'];
+        return reject(new Error(ra ? `Rate limit (429). Retry-After ${ra}s` : 'Rate limit (429)'));
+      }
+if(res.statusCode===404) return reject(new Error('Pool no encontrada (404)'));
         if(res.statusCode!==200) return reject(new Error(`HTTP ${res.statusCode}`));
         try{ resolve(JSON.parse(data)); }
         catch(e){ reject(new Error('JSON inválido')); }
@@ -68,7 +71,7 @@ function httpGet(url){
   });
 }
 
-async function fetchPoolWithRetry(address, retries=2){
+async function fetchPoolWithRetry(address, retries=4){
   for(let attempt=1; attempt<=retries; attempt++){
     try{
       const json = await httpGet(`${GT_BASE}/${address}`);
@@ -76,12 +79,12 @@ async function fetchPoolWithRetry(address, retries=2){
       if(!a) throw new Error('Sin atributos en respuesta');
       return {attrs:a, error:null};
     }catch(e){
-      const definitive = e.message.includes('404') || e.message.includes('Rate limit');
+      const definitive = e.message.includes('404');
       if(definitive || attempt===retries){
         return {attrs:null, error:e.message};
       }
       console.log(`  ↻ Reintentando (${attempt}/${retries})…`);
-      await sleep(2000 * attempt);
+      await sleep(4000 * attempt);
     }
   }
 }
@@ -142,7 +145,7 @@ async function main(){
       errors++;
     }
 
-    if(i < POOLS.length-1) await sleep(500);
+    if(i < POOLS.length-1) await sleep(2000);
   }
 
   // ── Merge con historial existente (mantener 3 días) ─────────────────────────
