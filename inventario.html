@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CraftWorld · Inventario</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0f;font-family:'Courier New',monospace;color:#e2e8f0;min-height:100vh}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:#1f2937;border-radius:2px}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+input{outline:none}
+button{cursor:pointer;font-family:'Courier New',monospace}
+button:hover{opacity:.85}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%,75%{transform:translateX(-6px)}50%{transform:translateX(6px)}}
+.anim{animation:fadeIn .3s ease}
+textarea:focus,input:focus{border-color:#f9731650!important}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ── ORDEN OFICIAL DE TOKENS (confirmado por usuario) ──────────────────────────
+const TOKENS = [
+  "COIN","EARTH","WATER","FIRE","MUD","CLAY","SAND","COPPER",
+  "SEAWATER","HEAT","ALGAE","LAVA","ACID","STEEL","OXYGEN","GLASS",
+  "STONE","SCREWS","CERAMICS","FUEL","CEMENT","OIL","SULFUR",
+  "PLASTICS","FIBERGLASS","ENERGY","HYDROGEN","DYNAMITE"
+];
+
+const EMOJI = {
+  COIN:"🪙",EARTH:"🌍",WATER:"💧",FIRE:"🔥",MUD:"🪱",CLAY:"🟫",
+  SAND:"⏳",COPPER:"🔶",SEAWATER:"🌊",HEAT:"♨️",ALGAE:"🌿",LAVA:"🌋",
+  ACID:"⚗️",STEEL:"🔩",OXYGEN:"💨",GLASS:"🔷",STONE:"🪨",SCREWS:"🔧",
+  CERAMICS:"🏺",FUEL:"⛽",CEMENT:"🏗️",OIL:"🛢️",SULFUR:"🟡",
+  PLASTICS:"♻️",FIBERGLASS:"🧵",ENERGY:"⚡",HYDROGEN:"💠",DYNAMITE:"💥"
+};
+
+// ── PRECIOS INICIALES (22/02/2026 11:22) ─────────────────────────────────────
+const DEFAULT_PRICES = {
+  COIN:1,EARTH:0.0019,WATER:0.9967,FIRE:5.5506,MUD:0.0061,
+  CLAY:0.0636,SAND:0.1869,COPPER:5.444,SEAWATER:10.5943,
+  HEAT:41.4156,ALGAE:47.658,LAVA:167.6663,ACID:1852.9602,
+  STEEL:48.7257,OXYGEN:146.9056,GLASS:365.4687,STONE:294.4505,
+  SCREWS:184.7312,CERAMICS:61.8606,FUEL:1149.7875,CEMENT:1912.3688,
+  OIL:3509.0006,SULFUR:3032.3392,PLASTICS:8778.7828,
+  FIBERGLASS:10641.0194,ENERGY:9084.2395,HYDROGEN:24326.6058,
+  DYNAMITE:44957.737
+};
+
+// ── HISTORIAL SEMILLA ─────────────────────────────────────────────────────────
+const SEED = [
+  {
+    id:1740225480000, date:"22/02/2026, 15:23",
+    q:{COIN:0,EARTH:2510000,WATER:275000,FIRE:79600,MUD:543000,CLAY:2270,SAND:535,COPPER:495,SEAWATER:32,HEAT:36,ALGAE:47,LAVA:5,ACID:0,STEEL:0,OXYGEN:36.6,GLASS:6,STONE:0,SCREWS:68.8,CERAMICS:58.1,FUEL:1.16,CEMENT:10,OIL:1.73,SULFUR:1,PLASTICS:0,FIBERGLASS:0,ENERGY:0.67,HYDROGEN:7.01,DYNAMITE:0},
+    px:{COIN:1,EARTH:0.0019,WATER:0.9967,FIRE:5.5506,MUD:0.0061,CLAY:0.0605,SAND:0.1858,COPPER:5.444,SEAWATER:10.5943,HEAT:40.8098,ALGAE:46.9581,LAVA:167.1499,ACID:1806.2787,STEEL:48.7257,OXYGEN:150.2093,GLASS:364.5199,STONE:301.0337,SCREWS:169.7197,CERAMICS:65.108,FUEL:1106.6297,CEMENT:1851.0738,OIL:3557.4031,SULFUR:3103.9839,PLASTICS:10240.7373,FIBERGLASS:10706.1014,ENERGY:9015.5921,HYDROGEN:24096.9139,DYNAMITE:44957.737},
+    cusd:0.00013701, tc:958940.83, tu:131.38
+  },
+  {
+    id:1740139080000, date:"21/02/2026, 13:38",
+    q:{COIN:0.14,EARTH:2900000,WATER:280000,FIRE:279000,MUD:466000,CLAY:649,SAND:137,COPPER:553,SEAWATER:257,HEAT:137,ALGAE:21.6,LAVA:0,ACID:0,STEEL:0.8,OXYGEN:0.65,GLASS:0,STONE:4.65,SCREWS:0,CERAMICS:53.7,FUEL:13.4,CEMENT:2.12,OIL:0,SULFUR:0.73,PLASTICS:0,FIBERGLASS:0,ENERGY:1,HYDROGEN:0.01,DYNAMITE:0},
+    px:{COIN:1,EARTH:0.0019,WATER:0.9967,FIRE:5.7343,MUD:0.006,CLAY:0.0631,SAND:0.1895,COPPER:5.6756,SEAWATER:11.4044,HEAT:40.4125,ALGAE:47.3522,LAVA:168.9643,ACID:2049.5969,STEEL:44.6887,OXYGEN:145.9025,GLASS:366.6066,STONE:279.783,SCREWS:173.3558,CERAMICS:62.9199,FUEL:1133.7843,CEMENT:1882.1262,OIL:3608.6827,SULFUR:2998.6346,PLASTICS:11645.0418,FIBERGLASS:9693.3297,ENERGY:9085.4336,HYDROGEN:24302.3182,DYNAMITE:45773.8993},
+    cusd:0.00015090, tc:1935458.27, tu:292.06
+  }
+];
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+const LS = {
+  get: k => { try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){return null;} },
+  set: (k,v) => { try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function fmt(n, d=2){
+  if(!n||isNaN(n)) return "0";
+  if(n>=1e6) return (n/1e6).toFixed(2)+"M";
+  if(n>=1000) return n.toLocaleString("es",{maximumFractionDigits:d});
+  return n.toFixed(d);
+}
+
+function calcTotal(q, px){
+  return TOKENS.reduce((s,t)=>s+(parseFloat(q[t])||0)*(px[t]||0),0);
+}
+
+function top5(snap){
+  return TOKENS.filter(t=>t!=="COIN")
+    .map(t=>({t,v:(parseFloat(snap.q[t])||0)*(snap.px[t]||0)}))
+    .sort((a,b)=>b.v-a.v).slice(0,5);
+}
+
+// ── ESTADO GLOBAL ─────────────────────────────────────────────────────────────
+let state = {
+  view: "history",    // history | add | prices
+  snaps: LS.get("cw-inv-snaps") || SEED,
+  prices: LS.get("cw-inv-px") || DEFAULT_PRICES,
+  coinUsd: LS.get("cw-inv-cusd") || 0.00013701,
+  pendingQ: {},       // cantidades del formulario nuevo
+  expanded: null,
+  importText: "",
+  importError: "",
+  importSuccess: false,
+  pricesSaved: false,
+  saving: false,
+};
+
+function setState(patch){ Object.assign(state, patch); render(); }
+
+// ── LÓGICA ────────────────────────────────────────────────────────────────────
+function saveSnapshot(){
+  const tc = calcTotal(state.pendingQ, state.prices);
+  const snap = {
+    id: Date.now(),
+    date: new Date().toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+    q: {...state.pendingQ},
+    px: {...state.prices},
+    cusd: state.coinUsd,
+    tc, tu: tc * state.coinUsd
+  };
+  const snaps = [snap, ...state.snaps];
+  LS.set("cw-inv-snaps", snaps);
+  setState({snaps, view:"history", pendingQ:{}, saving:false});
+}
+
+function deleteSnap(id){
+  if(!confirm("¿Eliminar este registro?")) return;
+  const snaps = state.snaps.filter(s=>s.id!==id);
+  LS.set("cw-inv-snaps", snaps);
+  setState({snaps});
+}
+
+function savePrices(){
+  LS.set("cw-inv-px", state.prices);
+  LS.set("cw-inv-cusd", state.coinUsd);
+  setState({pricesSaved:true});
+  setTimeout(()=>setState({pricesSaved:false}), 2000);
+}
+
+// ── IMPORTAR DESDE TEXTO ──────────────────────────────────────────────────────
+// Formato que yo (Claude) voy a generar:
+// COIN:0,EARTH:2510000,WATER:275000,FIRE:79600,...
+function parseImportText(text){
+  const q = {};
+  const errors = [];
+  // Soporta: "TOKEN: valor" o "TOKEN:valor" o "TOKEN = valor", separado por , o \n
+  const parts = text.split(/[\n,]+/);
+  parts.forEach(part => {
+    const m = part.trim().match(/^([A-Z]+)\s*[:\=]\s*([\d\.]+)/i);
+    if(m){
+      const token = m[1].toUpperCase();
+      const val = parseFloat(m[2]);
+      if(TOKENS.includes(token)){
+        q[token] = val;
+      }
+    }
+  });
+  if(Object.keys(q).length === 0) return {q:null, error:"No se encontraron tokens válidos. Revisá el formato."};
+  return {q, error:null};
+}
+
+function applyImport(){
+  const {q, error} = parseImportText(state.importText);
+  if(error){ setState({importError:error}); return; }
+  setState({pendingQ:q, importText:"", importError:"", importSuccess:true, view:"add"});
+  setTimeout(()=>setState({importSuccess:false}), 3000);
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(){
+  document.getElementById("app").innerHTML = buildApp();
+  attachEvents();
+}
+
+function buildApp(){
+  const s = state;
+  const maxUsd = s.snaps.length ? Math.max(...s.snaps.map(x=>x.tu), 1) : 1;
+
+  return `
+<div style="background:#0a0a0f;min-height:100vh;padding-bottom:48px">
+
+  <!-- HEADER -->
+  <div style="background:linear-gradient(135deg,#1a0a00,#0f0a1e);border-bottom:1px solid #2d1b00;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:17px;font-weight:bold;color:#f97316;letter-spacing:2px">⛏ CRAFTWORLD</div>
+      <div style="font-size:9px;color:#78716c;letter-spacing:3px">INVENTORY TRACKER</div>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">
+      ${[["history","📜 Historial"],["add","➕ Nuevo"],["import","📋 Importar"],["prices","💰 Precios"]].map(([v,l])=>`
+        <button onclick="nav('${v}')" style="background:${s.view===v?"#f97316":"transparent"};border:1px solid ${s.view===v?"#f97316":"#374151"};color:${s.view===v?"#0a0a0f":"#9ca3af"};padding:5px 10px;border-radius:4px;font-size:10px;font-weight:bold;letter-spacing:1px">${l}</button>
+      `).join("")}
+    </div>
+  </div>
+
+  <div style="max-width:900px;margin:0 auto;padding:18px 14px" class="anim">
+
+  <!-- ══ HISTORIAL ══ -->
+  ${s.view==="history" ? buildHistory(s, maxUsd) : ""}
+
+  <!-- ══ NUEVO ══ -->
+  ${s.view==="add" ? buildAdd(s) : ""}
+
+  <!-- ══ IMPORTAR ══ -->
+  ${s.view==="import" ? buildImport(s) : ""}
+
+  <!-- ══ PRECIOS ══ -->
+  ${s.view==="prices" ? buildPrices(s) : ""}
+
+  </div>
+</div>`;
+}
+
+function buildHistory(s, maxUsd){
+  if(s.snaps.length===0) return `<div style="text-align:center;padding:60px 20px;border:1px dashed #374151;border-radius:8px;color:#6b7280"><div style="font-size:36px;margin-bottom:10px">📦</div>Sin registros aún. Usá ➕ Nuevo o 📋 Importar.</div>`;
+
+  let chart = "";
+  if(s.snaps.length>1){
+    const bars = [...s.snaps].reverse().map((snap,i,arr)=>{
+      const h = Math.max(6,(snap.tu/maxUsd)*64);
+      const isLast = snap.id===s.snaps[0].id;
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+        <div style="font-size:7px;color:${isLast?"#f97316":"#6b7280"}">${snap.tu.toFixed(0)}$</div>
+        <div style="width:100%;height:${h}px;background:${isLast?"linear-gradient(180deg,#f97316,#b45309)":"linear-gradient(180deg,#374151,#1f2937)"};border-radius:2px 2px 0 0;min-width:14px"></div>
+        <div style="font-size:6px;color:#6b7280;text-align:center;line-height:1.2">${snap.date.split(",")[0]}</div>
+      </div>`;
+    }).join("");
+    const first = [...s.snaps].reverse()[0];
+    const last = s.snaps[0];
+    const pct = ((last.tu-first.tu)/first.tu*100).toFixed(1);
+    const up = last.tu>=first.tu;
+    chart = `<div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:14px 18px;margin-bottom:14px">
+      <div style="font-size:10px;color:#6b7280;letter-spacing:2px;margin-bottom:10px">EVOLUCIÓN (USD)</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:80px">${bars}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid #1f2937;font-size:10px">
+        <span style="color:#6b7280">Primer: <span style="color:#e2e8f0">$${first.tu.toFixed(2)}</span></span>
+        <span style="color:#6b7280">Último: <span style="color:#f97316;font-weight:bold">$${last.tu.toFixed(2)}</span></span>
+        <span style="color:#6b7280">Cambio total: <span style="color:${up?"#4ade80":"#f87171"}">${up?"▲":"▼"}${Math.abs(pct)}%</span></span>
+      </div>
+    </div>`;
+  }
+
+  const cards = s.snaps.map((snap,idx)=>{
+    const prev = s.snaps[idx+1];
+    const pct = prev ? ((snap.tu-prev.tu)/prev.tu*100) : null;
+    const isExp = s.expanded===snap.id;
+    const t5 = top5(snap);
+
+    const detail = isExp ? `
+      <div style="border-top:1px solid #1f2937;padding:14px 18px">
+        <div style="font-size:9px;color:#6b7280;letter-spacing:2px;margin-bottom:8px">TOP 5 MÁS VALIOSOS</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
+          ${t5.map(({t,v})=>`
+            <div style="background:#1f2937;border:1px solid #374151;border-radius:5px;padding:4px 9px;display:flex;align-items:center;gap:5px">
+              <span style="font-size:11px">${EMOJI[t]}</span>
+              <span style="font-size:10px;color:#e2e8f0;font-weight:bold">${t}</span>
+              <span style="font-size:10px;color:#f97316">${fmt(v)}C</span>
+              <span style="font-size:9px;color:#a3e635">$${(v*snap.cusd).toFixed(2)}</span>
+            </div>
+          `).join("")}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:3px;margin-bottom:12px">
+          ${TOKENS.filter(t=>(snap.q[t]||0)>0).map(t=>{
+            const q=parseFloat(snap.q[t])||0, vc=q*(snap.px[t]||0), vu=vc*snap.cusd;
+            return `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 7px;border-radius:4px;background:#1a1f2e;font-size:10px">
+              <span style="color:#9ca3af;min-width:85px">${EMOJI[t]} ${t}</span>
+              <span style="color:#e2e8f0;min-width:55px;text-align:right">${fmt(q,2)}</span>
+              <span style="color:#f97316;min-width:65px;text-align:right">${fmt(vc)}C</span>
+              <span style="color:#a3e635;min-width:46px;text-align:right">$${vu.toFixed(2)}</span>
+            </div>`;
+          }).join("")}
+        </div>
+        <button onclick="deleteSnap(${snap.id})" style="background:transparent;border:1px solid #7f1d1d;color:#f87171;padding:3px 10px;border-radius:4px;font-size:9px">🗑 Eliminar</button>
+      </div>` : "";
+
+    return `<div style="background:#111827;border:1px solid ${idx===0?"#f9731633":"#1f2937"};border-radius:8px;overflow:hidden;margin-bottom:8px">
+      <div onclick="toggle(${snap.id})" style="padding:12px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:${idx===0?"linear-gradient(90deg,#1a100066,#111827)":"transparent"}">
+        <div style="display:flex;align-items:center;gap:10px">
+          ${idx===0?`<span style="background:#f97316;color:#0a0a0f;font-size:8px;padding:2px 5px;border-radius:2px;font-weight:bold;letter-spacing:1px">ÚLTIMO</span>`:""}
+          <div>
+            <div style="font-size:12px;color:#e2e8f0;font-weight:bold">📅 ${snap.date}</div>
+            <div style="font-size:10px;color:#6b7280;margin-top:1px">${TOKENS.filter(t=>(snap.q[t]||0)>0).length} tokens con saldo</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="text-align:right">
+            <div style="font-size:15px;color:#f97316;font-weight:bold">${fmt(snap.tc)} COIN</div>
+            <div style="font-size:11px;color:#a3e635">$${snap.tu.toFixed(2)} USD</div>
+          </div>
+          ${pct!==null?`<div style="font-size:11px;color:${pct>=0?"#4ade80":"#f87171"};min-width:44px;text-align:right">${pct>=0?"▲":"▼"}${Math.abs(pct).toFixed(1)}%</div>`:""}
+          <span style="color:#6b7280;font-size:11px">${isExp?"▲":"▼"}</span>
+        </div>
+      </div>
+      ${detail}
+    </div>`;
+  }).join("");
+
+  return chart + cards;
+}
+
+function buildAdd(s){
+  const tc = calcTotal(s.pendingQ, s.prices);
+  const imported = s.importSuccess ? `<div style="background:#052e16;border:1px solid #16a34a;color:#4ade80;padding:8px 14px;border-radius:5px;font-size:11px;margin-bottom:12px">✅ Importación aplicada — revisá y guardá</div>` : "";
+
+  const inputs = TOKENS.map(t=>{
+    const val = s.pendingQ[t]||"";
+    const vc = val>0 ? (parseFloat(val)||0)*(s.prices[t]||0) : 0;
+    return `<div style="background:#111827;border:1px solid #1f2937;border-radius:6px;padding:9px 11px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:11px;color:#e2e8f0;font-weight:bold">${EMOJI[t]} ${t}</span>
+        <span style="font-size:8px;color:#6b7280">${s.prices[t]?fmt(s.prices[t],2)+"C":""}</span>
+      </div>
+      <input type="number" min="0" placeholder="0" value="${val}"
+        oninput="setPendingQ('${t}',this.value)"
+        style="width:100%;background:#1f2937;border:1px solid #374151;border-radius:4px;color:#e2e8f0;padding:5px 7px;font-size:12px;font-family:monospace"/>
+      ${vc>0?`<div style="font-size:8px;color:#f97316;margin-top:3px">= ${fmt(vc)} C · $${(vc*s.coinUsd).toFixed(2)}</div>`:""}
+    </div>`;
+  }).join("");
+
+  return `
+    ${imported}
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:14px;font-weight:bold;color:#f97316">➕ Nuevo registro de inventario</div>
+        <div style="font-size:10px;color:#6b7280;margin-top:2px">Ingresá las cantidades o usá 📋 Importar</div>
+      </div>
+      <div style="background:#1f2937;border:1px solid #f97316;border-radius:6px;padding:8px 14px;text-align:right">
+        <div style="font-size:9px;color:#6b7280">Valor total</div>
+        <div style="font-size:16px;color:#f97316;font-weight:bold">${fmt(tc)} COIN</div>
+        <div style="font-size:11px;color:#a3e635">$${(tc*s.coinUsd).toFixed(2)} USD</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:7px;margin-bottom:18px">
+      ${inputs}
+    </div>
+    <button onclick="saveSnapshot()" style="width:100%;background:#f97316;border:none;color:#0a0a0f;padding:13px;border-radius:6px;font-size:13px;font-weight:bold;letter-spacing:1px">
+      💾 GUARDAR REGISTRO
+    </button>`;
+}
+
+function buildImport(s){
+  return `
+    <div style="max-width:600px">
+      <div style="font-size:14px;font-weight:bold;color:#f97316;margin-bottom:4px">📋 Importar inventario desde texto</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:16px">Pegá el texto que te genera Claude con las cantidades de tu inventario</div>
+
+      <div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:16px;margin-bottom:16px">
+        <div style="font-size:10px;color:#6b7280;letter-spacing:2px;margin-bottom:8px">FORMATO ACEPTADO</div>
+        <code style="font-size:11px;color:#4ade80;line-height:1.8;display:block">
+          COIN: 0<br>
+          EARTH: 2510000<br>
+          WATER: 275000<br>
+          FIRE: 79600<br>
+          ... (cualquier separador: coma, salto de línea)
+        </code>
+      </div>
+
+      <textarea id="importBox" placeholder="Pegá las cantidades aquí..." rows="12"
+        oninput="setImportText(this.value)"
+        style="width:100%;background:#111827;border:1px solid #374151;border-radius:6px;color:#e2e8f0;padding:12px;font-size:12px;font-family:monospace;resize:vertical;margin-bottom:8px"
+      >${s.importText}</textarea>
+
+      ${s.importError?`<div style="background:#2a0d0d;border:1px solid #7f1d1d;color:#f87171;padding:8px 12px;border-radius:5px;font-size:11px;margin-bottom:8px">⚠ ${s.importError}</div>`:""}
+
+      <button onclick="applyImport()" style="width:100%;background:#f97316;border:none;color:#0a0a0f;padding:13px;border-radius:6px;font-size:13px;font-weight:bold;letter-spacing:1px">
+        ✅ APLICAR IMPORTACIÓN
+      </button>
+
+      <div style="margin-top:20px;background:#0f1a2e;border:1px solid #1e3a5f;border-radius:8px;padding:14px">
+        <div style="font-size:10px;color:#5a9aaa;letter-spacing:2px;margin-bottom:8px">💡 CÓMO USARLO</div>
+        <div style="font-size:11px;color:#6b7280;line-height:1.8">
+          1. Mandá un screenshot del inventario a Claude<br>
+          2. Claude te devuelve el texto con las cantidades en formato <span style="color:#f97316">TOKEN: cantidad</span><br>
+          3. Copiás ese texto y lo pegás acá<br>
+          4. Presionás "Aplicar importación" y se carga solo<br>
+          5. Revisás en ➕ Nuevo y guardás
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildPrices(s){
+  const inputs = TOKENS.filter(t=>t!=="COIN").map(t=>`
+    <div style="background:#111827;border:1px solid #1f2937;border-radius:5px;padding:7px 10px;display:flex;align-items:center;gap:7px">
+      <span style="font-size:11px">${EMOJI[t]}</span>
+      <span style="font-size:10px;color:#e2e8f0;min-width:78px">${t}</span>
+      <input type="number" min="0" value="${s.prices[t]||""}"
+        oninput="setPrice('${t}',this.value)"
+        style="flex:1;background:#1f2937;border:1px solid #374151;border-radius:4px;color:#f97316;padding:4px 6px;font-size:11px;font-family:monospace;min-width:0"/>
+      <span style="font-size:8px;color:#6b7280">C</span>
+    </div>
+  `).join("");
+
+  return `
+    <div>
+      <div style="font-size:14px;font-weight:bold;color:#f97316;margin-bottom:4px">💰 Actualizar precios</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:14px">Actualizá después de cada análisis CSV</div>
+
+      <div style="background:#111827;border:1px solid #f97316;border-radius:6px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:bold;color:#f97316">🪙 COIN → USD</span>
+        <input type="number" step="0.000000001" value="${s.coinUsd}"
+          oninput="setCoinUsd(this.value)"
+          style="background:#1f2937;border:1px solid #374151;border-radius:4px;color:#e2e8f0;padding:5px 8px;font-size:11px;font-family:monospace;width:150px"/>
+        <span style="font-size:10px;color:#6b7280">= $${parseFloat(s.coinUsd).toFixed(8)} por COIN</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:5px;margin-bottom:18px">
+        ${inputs}
+      </div>
+
+      <button onclick="savePrices()" style="width:100%;background:${s.pricesSaved?"#16a34a":"#f97316"};border:none;color:#0a0a0f;padding:13px;border-radius:6px;font-size:13px;font-weight:bold;letter-spacing:1px">
+        ${s.pricesSaved?"✅ PRECIOS GUARDADOS":"💾 GUARDAR PRECIOS"}
+      </button>
+    </div>`;
+}
+
+// ── EVENT HANDLERS ────────────────────────────────────────────────────────────
+function attachEvents(){ /* events via inline onclick */ }
+
+window.nav          = (v) => setState({view:v, importError:""});
+window.toggle       = (id) => setState({expanded: state.expanded===id ? null : id});
+window.deleteSnap   = deleteSnap;
+window.saveSnapshot = saveSnapshot;
+window.savePrices   = savePrices;
+window.applyImport  = applyImport;
+
+window.setPendingQ  = (t,v) => {
+  state.pendingQ[t] = parseFloat(v)||0;
+  // Solo re-render el total sin rehacer todo
+  const tot = calcTotal(state.pendingQ, state.prices);
+  const el = document.querySelector('[data-total]');
+  render(); // full render needed for reactivity
+};
+
+window.setImportText = (v) => { state.importText=v; state.importError=""; };
+window.setPrice = (t,v) => { state.prices[t]=parseFloat(v)||0; };
+window.setCoinUsd = (v) => { state.coinUsd=parseFloat(v)||0; };
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
